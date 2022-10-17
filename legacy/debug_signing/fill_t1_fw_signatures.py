@@ -3,40 +3,41 @@
 import sys
 from hashlib import sha256
 
+
 class Signatures:
     # offsets from T1 firmware hash
     sig_offsets = [544, 608, 672]
     sigindex_offsets = [736, 737, 738]
-    signature_pairs = [] # list of tupes (int, bytes)
+    signature_pairs = []  # list of tupes (int, bytes)
 
     def __init__(self, filename):
-        """ Load FW, zero out signature fiels, compute header hash"""
+        """Load FW, zero out signature fiels, compute header hash"""
         self.fw_image = None  # mutable bytearray
         self.load_fw(filename)
         self.header_hash = sha256(self.get_header()).digest()
         print(f"Loaded FW image with header hash {self.header_hash_hex()}")
 
     def load_fw(self, filename):
-        """ Load FW and zero out signature fiels"""
+        """Load FW and zero out signature fiels"""
         with open(filename, "rb") as f:
             data = open(filename, "rb").read()
             self.fw_image = bytearray(data)
         self.zero_sig_fields()
 
     def zero_sig_fields(self):
-        """ Zero out signature fields to be able to compute header hash"""
+        """Zero out signature fields to be able to compute header hash"""
         for i in range(3):
             sigindex_ofs = self.sigindex_offsets[i]
             sig_ofs = self.sig_offsets[i]
             self.fw_image[sigindex_ofs] = 0
 
-            self.fw_image[sig_ofs:sig_ofs+64] = b'\x00'*64
+            self.fw_image[sig_ofs : sig_ofs + 64] = b"\x00" * 64
 
     def header_hash_hex(self):
         return self.header_hash.hex()
 
     def get_header(self):
-        """ Return header with zeroed out signatures as copy"""
+        """Return header with zeroed out signatures as copy"""
         return bytes(self.fw_image[:1024])
 
     def patch_signatures(self):
@@ -57,13 +58,12 @@ class Signatures:
 
             print(f"Patching signature {sig.hex()} at offset {sig_ofs}")
             assert len(sig) == 64
-            self.fw_image[sig_ofs:sig_ofs+64] = sig
+            self.fw_image[sig_ofs : sig_ofs + 64] = sig
 
     def write_output_fw(self, filename):
         print(f"Writing output signed FW file {filename}")
         with open(filename, "wb") as signed_fw_file:
             signed_fw_file.write(self.fw_image)
-
 
 
 if __name__ == "__main__":
@@ -84,11 +84,10 @@ if __name__ == "__main__":
         idx, sig = line.rstrip().split(" ")
         idx = int(idx)
         sig = bytes.fromhex(sig)
-        assert idx in range(1, 6) # 1 <= idx <= 5
+        assert idx in range(1, 6)  # 1 <= idx <= 5
         assert len(sig) == 64
         signatures.signature_pairs.append((idx, sig))
 
     out_fw_name = in_fw_fname + ".signed"
     signatures.patch_signatures()
     signatures.write_output_fw(out_fw_name)
-

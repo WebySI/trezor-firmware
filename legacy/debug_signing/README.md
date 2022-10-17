@@ -2,9 +2,9 @@
 
 ## Signing with the "SignMessage" (v3) method
 1. T1 firmware+bootloader must be built with `DEBUG_T1_SIGNATURES=1` to be able to debug them
-1. Load signing device or emulator (must have `PYOPT=0` for core or `DEBUG_LINK=1` 
+1. Load signing device or emulator (must have `PYOPT=0` for core or `DEBUG_LINK=1`
    for T1 legacy) with:
-   `trezorctl device load -m "table table table table table table table table table table table advance"` 
+   `trezorctl device load -m "table table table table table table table table table table table advance"`
 1. **FW header hash is different from whole FW hash in the one output by cibuild**
 1. Run the emulator or device (make sure not to confuse which are you using for signing)
 1. Run `firmware_hash_sign_trezor.py ../firmware/trezor.bin ../firmware/trezor.bin.signed`
@@ -15,7 +15,7 @@
 By default the scripts uses the `[1, 2, 3]` sigindices, you can modify `sig_indices`
 inside to have different order or different keys (1 <= index <= 5 )
 
-Update FW on T1 either via `trezorctl device firmware-update` or 
+Update FW on T1 either via `trezorctl device firmware-update` or
 `make flash_firmware_jlink`.
 
 ## Signing with the v2 method (called "new" for confusing historical reasons)
