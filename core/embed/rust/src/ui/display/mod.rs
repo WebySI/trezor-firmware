@@ -1005,7 +1005,7 @@ impl Glyph {
 
 /// Font constants. Keep in sync with FONT_ definitions in
 /// `extmod/modtrezorui/display.h`.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, FromPrimitive)]
 #[repr(u8)]
 pub enum Font {
     NORMAL = 1,

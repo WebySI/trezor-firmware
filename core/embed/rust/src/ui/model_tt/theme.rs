@@ -10,6 +10,8 @@ use crate::ui::{
 
 use super::component::{ButtonStyle, ButtonStyleSheet, LoaderStyle, LoaderStyleSheet};
 
+use num_traits::FromPrimitive;
+
 // Typical backlight values.
 pub const BACKLIGHT_NORMAL: i32 = 150;
 pub const BACKLIGHT_LOW: i32 = 45;
@@ -385,6 +387,17 @@ pub const TEXT_NORMAL: TextStyle = TextStyle::new(Font::NORMAL, FG, BG, GREY_LIG
 pub const TEXT_MEDIUM: TextStyle = TextStyle::new(Font::MEDIUM, FG, BG, GREY_LIGHT, GREY_LIGHT);
 pub const TEXT_BOLD: TextStyle = TextStyle::new(Font::BOLD, FG, BG, GREY_LIGHT, GREY_LIGHT);
 pub const TEXT_MONO: TextStyle = TextStyle::new(Font::MONO, FG, BG, GREY_LIGHT, GREY_LIGHT);
+
+/// Convert Python-side numeric id to a `TextStyle`.
+pub fn textstyle_number(num: i32) -> &'static TextStyle {
+    let font = Font::from_i32(-num);
+    match font {
+        Some(Font::MEDIUM) => &TEXT_MEDIUM,
+        Some(Font::BOLD) => &TEXT_BOLD,
+        Some(Font::MONO) => &TEXT_MONO,
+        _ => &TEXT_NORMAL,
+    }
+}
 
 pub const TEXT_NORMAL_OFF_WHITE: TextStyle =
     TextStyle::new(Font::NORMAL, OFF_WHITE, BG, GREY_LIGHT, GREY_LIGHT);

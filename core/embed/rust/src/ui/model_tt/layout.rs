@@ -16,9 +16,12 @@ use crate::{
             base::ComponentExt,
             paginated::{PageMsg, Paginate},
             painter,
-            text::paragraphs::{
-                Checklist, Paragraph, ParagraphSource, ParagraphVecLong, ParagraphVecShort,
-                Paragraphs, VecExt,
+            text::{
+                paragraphs::{
+                    Checklist, Paragraph, ParagraphSource, ParagraphVecLong, ParagraphVecShort,
+                    Paragraphs, VecExt,
+                },
+                TextStyle,
             },
             Border, Component, Timeout, TimeoutMsg,
         },
@@ -196,6 +199,7 @@ where
         match msg {
             PageMsg::Content(_) => Err(Error::TypeError),
             PageMsg::Controls(msg) => msg.try_into(),
+            PageMsg::GoBack => Ok(CANCELLED.as_obj()),
         }
     }
 }
@@ -208,6 +212,7 @@ where
         match msg {
             PageMsg::Content(_) => Err(Error::TypeError),
             PageMsg::Controls(msg) => msg.try_into(),
+            PageMsg::GoBack => unreachable!(),
         }
     }
 }
@@ -318,7 +323,6 @@ extern "C" fn new_confirm_blob(n_args: usize, args: *const Obj, kwargs: *mut Map
             .get(Qstr::MP_QSTR_verb_cancel)
             .unwrap_or_else(|_| Obj::const_none())
             .try_into_option()?;
-        let _ask_pagination: bool = kwargs.get_or(Qstr::MP_QSTR_ask_pagination, false)?;
         let hold: bool = kwargs.get_or(Qstr::MP_QSTR_hold, false)?;
 
         let paragraphs = Paragraphs::new([
@@ -712,21 +716,58 @@ extern "C" fn new_confirm_with_info(n_args: usize, args: *const Obj, kwargs: *mu
         let info_button: StrBuffer = kwargs.get(Qstr::MP_QSTR_info_button)?.try_into()?;
         let items: Obj = kwargs.get(Qstr::MP_QSTR_items)?;
 
-        let mut paragraphs = ParagraphVecLong::new();
+        let mut paragraphs = ParagraphVecShort::new();
 
         let mut iter_buf = IterBuf::new();
         let iter = Iter::try_from_obj_with_buf(items, &mut iter_buf)?;
-        for text in iter {
+        for para in iter {
+            let [font, text]: [Obj; 2] = iter_into_objs(para)?;
+            let style: &TextStyle = theme::textstyle_number(font.try_into()?);
             let text: StrBuffer = text.try_into()?;
-            paragraphs.add(Paragraph::new(&theme::TEXT_NORMAL, text));
+            paragraphs.add(Paragraph::new(style, text));
+            if paragraphs.is_full() {
+                break;
+            }
         }
 
         let buttons = Button::cancel_info_confirm(button, info_button);
 
         let obj = LayoutObj::new(
+            Frame::new(title, Dialog::new(paragraphs.into_paragraphs(), buttons))
+                .with_border(theme::borders())
+                .into_child(),
+        )?;
+        Ok(obj.into())
+    };
+    unsafe { util::try_with_args_and_kwargs(n_args, args, kwargs, block) }
+}
+
+extern "C" fn new_confirm_more(n_args: usize, args: *const Obj, kwargs: *mut Map) -> Obj {
+    let block = move |_args: &[Obj], kwargs: &Map| {
+        let title: StrBuffer = kwargs.get(Qstr::MP_QSTR_title)?.try_into()?;
+        let button: StrBuffer = kwargs.get(Qstr::MP_QSTR_button)?.try_into()?;
+        let items: Obj = kwargs.get(Qstr::MP_QSTR_items)?;
+
+        let mut paragraphs = ParagraphVecLong::new();
+
+        let mut iter_buf = IterBuf::new();
+        let iter = Iter::try_from_obj_with_buf(items, &mut iter_buf)?;
+        for para in iter {
+            let [font, text]: [Obj; 2] = iter_into_objs(para)?;
+            let style: &TextStyle = theme::textstyle_number(font.try_into()?);
+            let text: StrBuffer = text.try_into()?;
+            paragraphs.add(Paragraph::new(style, text));
+        }
+
+        let button =
+            theme::button_bar(Button::with_text(button).map(|msg| {
+                (matches!(msg, ButtonMsg::Clicked)).then(|| CancelConfirmMsg::Confirmed)
+            }));
+
+        let obj = LayoutObj::new(
             Frame::new(
                 title,
-                SwipePage::new(paragraphs.into_paragraphs(), buttons, theme::BG),
+                SwipePage::new(paragraphs.into_paragraphs(), button, theme::BG).with_back_button(),
             )
             .into_child(),
         )?;
@@ -1086,7 +1127,6 @@ pub static mp_module_trezorui2: Module = obj_module! {
     ///     description: str = "",
     ///     extra: str = "",
     ///     verb_cancel: str | None = None,
-    ///     ask_pagination: bool = False,
     ///     hold: bool = False,
     /// ) -> object:
     ///     """Confirm byte sequence data."""
@@ -1225,10 +1265,21 @@ pub static mp_module_trezorui2: Module = obj_module! {
     ///     title: str,
     ///     button: str,
     ///     info_button: str,
-    ///     items: Iterable[str],
+    ///     items: Iterable[Tuple[int, str]],
     /// ) -> object:
-    ///     """Confirm action but with third button."""
+    ///     """Confirm given items but with third button. Always single page
+    ///     without scrolling."""
     Qstr::MP_QSTR_confirm_with_info => obj_fn_kw!(0, new_confirm_with_info).as_obj(),
+
+    /// def confirm_more(
+    ///     *,
+    ///     title: str,
+    ///     button: str,
+    ///     items: Iterable[Tuple[int, str]],
+    /// ) -> object:
+    ///     """Confirm long content with the possibility to go back from any page.
+    ///     Meant to be used with confirm_with_info."""
+    Qstr::MP_QSTR_confirm_more => obj_fn_kw!(0, new_confirm_more).as_obj(),
 
     /// def confirm_coinjoin(
     ///     *,
