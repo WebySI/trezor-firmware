@@ -12,7 +12,7 @@
   "maxfee_kb": 51000000,
   "minfee_kb": 1000,
   "signed_message_header": "BitcoinZ Signed Message:\n",
-  "hash_genesis_block": "0007844681f84249ad7829f9673ea4b6d26a139c741c5847926aff944337d908",
+  "hash_genesis_block": "f499ee3d498b4298ac6a64205b8addb7c43197e2a660229be65db8a4534d75c1",
   "xprv_magic": 76066276,
   "xpub_magic": 76067358,
   "xpub_magic_segwit_p2sh": null,
